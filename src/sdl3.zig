@@ -56,7 +56,6 @@ pub const Window = struct {
         }
         if (self.sdl_context) |context| {
             glDestroyContext(context) catch |err| {
-                // output the error to the console
                 std.debug.print("Handled error: {}\n", .{err});
             };
         }
@@ -65,7 +64,7 @@ pub const Window = struct {
     pub fn clear(self: *Window) !void {
         if (self.sdl_context) |context| {
             _ = context; // autofix
-            gl.glClearColor(0.2, 0.3, 0.3, 1.0); // Set a teal-ish background color
+            gl.glClearColor(0.2, 0.3, 0.3, 1.0);
             gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
         } else {
             return error.GLContextDestroyFailed;

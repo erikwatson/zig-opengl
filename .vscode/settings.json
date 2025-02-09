@@ -1,0 +1,8 @@
+{
+  "C_Cpp.default.includePath": [
+    "/usr/local/opt/sdl2/include",
+    "/opt/homebrew/include/SDL2",
+    "/usr/include/SDL2"
+  ],
+  "C_Cpp.default.defines": ["SDL_MAIN_HANDLED"]
+}

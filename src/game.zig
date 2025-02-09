@@ -63,7 +63,10 @@ pub const Game = struct {
                 return;
             };
 
-            window.present();
+            window.present() catch |err| {
+                std.debug.print("Error presenting window: {}\n", .{err});
+                return;
+            };
         }
     }
 };

@@ -8,6 +8,7 @@ const gl = @cImport({
 });
 
 const std = @import("std");
+const OpenGl = @import("opengl.zig");
 
 const Error = error{
     WindowInitFailed,
@@ -17,18 +18,10 @@ const Error = error{
     InitialiseGLADFailed,
 };
 
-pub fn initialiseGlad() !void {
-    const result = gl.gladLoadGLLoader(@ptrCast(&sdl.SDL_GL_GetProcAddress));
-    if (result == gl.GL_FALSE) {
-        std.debug.print("Failed to initialize GLAD\n", .{});
-        return error.InitialiseGLADFailed;
-    }
-}
-
 pub const Window = struct {
     sdl_window: ?*sdl.SDL_Window,
     sdl_renderer: ?*sdl.SDL_Renderer,
-    sdl_context: ?sdl.SDL_GLContext,
+    sdl_context: sdl.SDL_GLContext,
 
     pub fn create(
         title: [*c]const u8,
@@ -42,31 +35,14 @@ pub const Window = struct {
             height,
             sdl.SDL_EVENT_WINDOW_SHOWN | sdl.SDL_WINDOW_OPENGL,
         );
-        window.sdl_context = sdl.SDL_GL_CreateContext(window.sdl_window);
+        window.sdl_context = try createContext(window.sdl_window);
 
-        if (window.sdl_context == null) {
-            std.debug.print("Error creating OpenGL context\n", .{});
-            return error.GLContextDestroyFailed;
-        } else {
-            std.debug.print("OpenGL context created\n", .{});
-        }
-
-        // Initialize GLAD
-        initialiseGlad() catch |err| {
-            // output the error to the console
-            std.debug.print("Handled error: {}\n", .{err});
-        };
-
-        gl.glViewport(0, 0, width, height);
-        gl.glEnable(gl.GL_DEPTH_TEST);
-        gl.glDepthFunc(gl.GL_LESS);
-
-        // Make the OpenGL context current
-        const make_current_result = sdl.SDL_GL_MakeCurrent(window.sdl_window.?, window.sdl_context.?);
-        if (!make_current_result) {
-            std.debug.print("Failed to make OpenGL context current\n", .{});
-            return error.GLContextDestroyFailed;
-        }
+        try OpenGl.initialise(
+            window.sdl_window,
+            window.sdl_context,
+            width,
+            height,
+        );
 
         return window;
     }
@@ -89,19 +65,20 @@ pub const Window = struct {
     pub fn clear(self: *Window) !void {
         if (self.sdl_context) |context| {
             _ = context; // autofix
-            // Now that we know context is not null, we can safely use it
             gl.glClearColor(0.2, 0.3, 0.3, 1.0); // Set a teal-ish background color
             gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
         } else {
-            return error.GLContextDestroyFailed; // Handle the error if the context is null
+            return error.GLContextDestroyFailed;
         }
     }
 
-    pub fn present(self: *Window) void {
+    pub fn present(self: *Window) !void {
         if (self.sdl_window) |window| {
             if (!sdl.SDL_GL_SwapWindow(window)) {
-                std.debug.print("Failed to swap window\n", .{});
+                return error.PresentFailed;
             }
+        } else {
+            return error.PresentFailed;
         }
     }
 };
@@ -123,6 +100,15 @@ pub fn createRenderer(window: *sdl.SDL_Window) !*sdl.SDL_Renderer {
         return renderer;
     } else {
         return error.RendererInitFailed;
+    }
+}
+
+pub fn createContext(window: ?*sdl.SDL_Window) !sdl.SDL_GLContext {
+    const context = sdl.SDL_GL_CreateContext(window);
+    if (context == null) {
+        return error.GLContextDestroyFailed;
+    } else {
+        return context;
     }
 }
 

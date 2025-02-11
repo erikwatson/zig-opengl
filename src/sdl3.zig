@@ -16,6 +16,11 @@ const Error = error{
     PresentFailed,
     GLContextDestroyFailed,
     InitialiseGLADFailed,
+    SdlInitFailed,
+    SDLGLSetAttributeFailed,
+    SDLGLSetMakeCurrentFailed,
+    GLClearFailed,
+    GLSwapWindowFailed,
 };
 
 pub const Window = struct {
@@ -28,6 +33,27 @@ pub const Window = struct {
         width: c_int,
         height: c_int,
     ) !Window {
+        if (!sdl.SDL_Init(sdl.SDL_INIT_VIDEO)) {
+            const error_message = sdl.SDL_GetError();
+            std.debug.print("Failed to initialize SDL. SDL Error: {s}\n", .{error_message});
+            return error.SdlInitFailed;
+        }
+
+        if (!sdl.SDL_GL_SetAttribute(sdl.SDL_GL_CONTEXT_MAJOR_VERSION, 4)) {
+            std.debug.print("Failed to set OpenGL context major version\n", .{});
+            return error.SDLGLSetAttributeFailed;
+        }
+
+        if (!sdl.SDL_GL_SetAttribute(sdl.SDL_GL_CONTEXT_MINOR_VERSION, 1)) {
+            std.debug.print("Failed to set OpenGL context major version\n", .{});
+            return error.SDLGLSetAttributeFailed;
+        }
+
+        if (!sdl.SDL_GL_SetAttribute(sdl.SDL_GL_CONTEXT_PROFILE_MASK, sdl.SDL_GL_CONTEXT_PROFILE_CORE)) {
+            std.debug.print("Failed to set OpenGL context profile mask\n", .{});
+            return error.SDLGLSetAttributeFailed;
+        }
+
         var window: Window = undefined;
         window.sdl_window = try createWindow(
             title,
@@ -36,10 +62,13 @@ pub const Window = struct {
             sdl.SDL_EVENT_WINDOW_SHOWN | sdl.SDL_WINDOW_OPENGL,
         );
         window.sdl_context = try createContext(window.sdl_window);
+        const make_current_result = sdl.SDL_GL_MakeCurrent(window.sdl_window, window.sdl_context);
+        if (!make_current_result) {
+            std.debug.print("Failed to make OpenGL context current\n", .{});
+            return error.SDLGLSetMakeCurrentFailed;
+        }
 
         try OpenGl.initialise(
-            window.sdl_window,
-            window.sdl_context,
             width,
             height,
         );
@@ -56,7 +85,7 @@ pub const Window = struct {
         }
         if (self.sdl_context) |context| {
             glDestroyContext(context) catch |err| {
-                std.debug.print("Handled error: {}\n", .{err});
+                std.debug.print("Failed to destroy OpenGL context: {}\n", .{err});
             };
         }
     }
@@ -67,7 +96,7 @@ pub const Window = struct {
             gl.glClearColor(0.2, 0.3, 0.3, 1.0);
             gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
         } else {
-            return error.GLContextDestroyFailed;
+            return error.GLClearFailed;
         }
     }
 
@@ -77,7 +106,7 @@ pub const Window = struct {
                 return error.PresentFailed;
             }
         } else {
-            return error.PresentFailed;
+            return error.GLSwapWindowFailed;
         }
     }
 };
@@ -105,7 +134,7 @@ pub fn createRenderer(window: *sdl.SDL_Window) !*sdl.SDL_Renderer {
 pub fn createContext(window: ?*sdl.SDL_Window) !sdl.SDL_GLContext {
     const context = sdl.SDL_GL_CreateContext(window);
     if (context == null) {
-        return error.GLContextDestroyFailed;
+        return error.GLCreateContextFailed;
     } else {
         return context;
     }
@@ -113,19 +142,19 @@ pub fn createContext(window: ?*sdl.SDL_Window) !sdl.SDL_GLContext {
 
 pub fn renderClear(renderer: *sdl.SDL_Renderer) !void {
     if (!sdl.SDL_RenderClear(renderer)) {
-        return error.ClearFailed;
+        return error.RenderClearFailed;
     }
 }
 
 pub fn renderPresent(renderer: *sdl.SDL_Renderer) !void {
     if (!sdl.SDL_RenderPresent(renderer)) {
-        return error.PresentFailed;
+        return error.RenderPresentFailed;
     }
 }
 
 pub fn renderDrawColor(renderer: *sdl.SDL_Renderer, r: u8, g: u8, b: u8, a: u8) !void {
     if (!sdl.SDL_SetRenderDrawColor(renderer, r, g, b, a)) {
-        return error.ClearFailed;
+        return error.RenderDrawColourFailed;
     }
 }
 
@@ -137,7 +166,18 @@ pub fn destroyRenderer(renderer: *sdl.SDL_Renderer) void {
     sdl.SDL_DestroyRenderer(renderer);
 }
 
+// pub fn glDestroyContext(context: sdl.SDL_GLContext) !void {
+
+//     if (!sdl.SDL_GL_DestroyContext(context)) {
+//         return error.GLContextDestroyFailed;
+//     }
+// }
+
 pub fn glDestroyContext(context: sdl.SDL_GLContext) !void {
+    if (context == null) {
+        return error.GLContextDestroyFailed; // Context is invalid
+    }
+
     if (!sdl.SDL_GL_DestroyContext(context)) {
         return error.GLContextDestroyFailed;
     }

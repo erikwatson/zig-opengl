@@ -28,11 +28,10 @@ pub fn build(b: *std.Build) void {
 
     exe.addObject(glad);
 
-    // Link OpenGL
-    exe.linkSystemLibrary("GL"); // On macOS/Linux
-    // exe.linkSystemLibrary("opengl32"); // On Windows
+    // Link OpenGL framework on macOS using linkFramework instead of linkSystemLibrary
+    exe.linkFramework("OpenGL"); // Correct way to link OpenGL framework on macOS
 
-    // Ensure Zig finds SDL3 (Homebrew installed it in /usr/local/opt/sdl2)
+    // Ensure Zig finds SDL3 (Homebrew installed it in /usr/local/opt/sdl3)
     exe.addIncludePath(.{ .cwd_relative = "/usr/local/opt/sdl3/include" });
     exe.addLibraryPath(.{ .cwd_relative = "/usr/local/opt/sdl3/lib" });
     exe.linkSystemLibrary("SDL3");

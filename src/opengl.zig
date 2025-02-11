@@ -15,15 +15,9 @@ fn initialiseGlad() !void {
     }
 }
 
-pub fn initialise(window: ?*sdl.SDL_Window, context: sdl.SDL_GLContext, width: c_int, height: c_int) !void {
+pub fn initialise(width: c_int, height: c_int) !void {
     try initialiseGlad();
     gl.glViewport(0, 0, width, height);
     gl.glEnable(gl.GL_DEPTH_TEST);
     gl.glDepthFunc(gl.GL_LESS);
-
-    const make_current_result = sdl.SDL_GL_MakeCurrent(window.?, context.?);
-    if (!make_current_result) {
-        std.debug.print("Failed to make OpenGL context current\n", .{});
-        return error.GLContextDestroyFailed;
-    }
 }

@@ -3,7 +3,7 @@ const InputState = Input.InputState;
 const sdl = @cImport({
     @cInclude("SDL3/SDL.h");
 });
-const Window = @import("sdl3.zig").Window;
+const Window = @import("window.zig").Window;
 const std = @import("std");
 const Graphics = @import("graphics.zig").Graphics;
 
